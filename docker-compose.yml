@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  db:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mydb
+      MYSQL_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "db"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - my_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REPO_URL: ${REPO_URL}
+        BRANCH: ${BRANCH}
+    container_name: dotnet_app
+    environment:
+      - MYSQL_DATABASE=mydb
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - ConnectionStrings__DefaultConnection=Server=db;Database=mydb;User=root;Password=root;
+    entrypoint: ["/bin/bash", "-c", "--"]
+    command: [
+        # "/home/wait-for-it.sh db:3306 -- dotnet ef database update --project /home/DCMLockerServidor/Server/DCMLockerServidor.Server.csproj && dotnet run --project /home/DCMLockerServidor/Server/DCMLockerServidor.Server.csproj && dotnet /home/out/DCMLockerServidor.Server.dll",
+        " dotnet ef database update --project /home/DCMLockerServidor/Server/DCMLockerServidor.Server.csproj && dotnet /home/out/DCMLockerServidor.Server.dll",
+      ]
+
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT}:80"
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
